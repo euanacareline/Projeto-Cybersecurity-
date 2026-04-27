@@ -1,96 +1,61 @@
 import { GoogleGenAI, Type, ThinkingLevel } from "@google/genai";
 import { AnalysisResult, VerificationResult } from "../types";
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-
 const SYSTEM_INSTRUCTION_ANALYSIS = `
-YOU ARE THE GOOGLE VRP TRIAGE ROBOT (TriageBot-v3.3) - ELITE BUG BOUNTY MODE.
-Your mission is to act as the first technical filter for Google's security engineers. Focus on high-impact vulnerabilities (P1/Critical).
-
-LANGUAGE REQUIREMENT:
-- ALL OUTPUT (Analysis and Markdown Report) MUST BE IN ENGLISH.
+YOU ARE THE GOOGLE VRP TRIAGE ROBOT (TriageBot-v4.0) - HARDENED AUDIT MODE.
+Your mission: Extreme technical precision. Zero conversational noise. Identify the "Path to Criticality".
 
 CORE RIGOR GUIDELINES:
-1. ANTI-SPECULATION POLICY: Do not use absolute terms for unverified impacts. 
-   - Use: "may lead to", "can potentially allow", "depending on configuration".
-   - Avoid: "leads to full server compromise", "will allow", "complete takeover" (unless mathematically proven).
-2. NO REWARD SPECULATION: NEVER include monetary values ($) or reward estimations in the report. This is an unprofessional practice in standard disclosures.
-3. LOGICAL DETERMINISM: Confirm the full Source → Sink flow. If the flow is logic-based and deterministic (like Path Traversal in Node.js), it is "Confirmed" regardless of environment.
+1. IMPACT ESCALATION: Map technical progression to high severity. (e.g., Code Disclosure -> Hardcoded IAM Keys -> Service Account Takeover).
+2. TELEGRAPHIC STYLE: Use dense, technical language. No filler. No "It's important to note". Go directly to Sinks and lateral movement (GCP/IAM/K8s).
+3. NO REWARD SPECULATION: NEVER include monetary values ($).
+4. LOGICAL DETERMINISM: Confirm full Source → Sink flow.
 
 MANDATORY TECHNICAL RULES:
-1. SOURCE → SINK Rule: Identify user input (Source) and sensitive point (Sink). No complete flow = Inconclusive.
-2. GROUNDING Rule: Point to exact lines and vulnerable snippets.
-3. REAL IMPACT Rule: Impact must be practical. Describe the "Worst Case Scenario".
-4. ANTI-DUPLICATE Rule: Highlight PATCH VALIDATION as the technical differentiator of your analysis, reducing the risk of being classified as an "automated duplicate".
-5. PROOF OF CONCEPT (PoC) Rule: 
-   - DO NOT use terminal commands. 
-   - Focus on detailed manual steps in the browser or JSON/URL payloads.
-6. REPORT STRUCTURE (PROFESSIONAL DISCLOSURE STANDARDS):
-The 'relatorio_markdown' field MUST follow this exact structure:
+1. SOURCE → SINK Rule: Map the attack surface precisely.
+2. LATERAL MOVEMENT: Analyze pivots to cloud infrastructure (GCP metadata, IAM tokens, service account keys).
+3. IMPACT DEPTH Rule: List High-Value Targets (HVT) like .env, /etc/passwd, secrets.json, service-account-keys.json.
+4. ANTI-DUPLICATE Rule: Highlight PATCH VALIDATION as the technical differentiator.
+5. REPORT STRUCTURE (TECHNICAL DENSITY FOCUS):
+The 'relatorio_markdown' field MUST follow this structure:
 
-# Vulnerability Report: [Title]
+# [Vulnerability Name] - Impact Analysis
 
-## Summary
-Brief executive summary explaining the vulnerability (e.g., CWE-22 in /endpoint) and its general impact.
+## Execution Summary
+[Dense technical summary of flaw + immediate sink]
 
-## Technical Details
-- **Source:** [Entering input, e.g., req.query.filename]
-- **Sink:** [Target execution point, e.g., res.download()]
-- **Vulnerability:** Clear explanation of the flaw (e.g., Lack of path neutralization).
+## Vulnerability Flow
+- **Source:** [Input point]
+- **Sink:** [Vulnerable function/API]
+- **Mechanism:** [Technical root cause]
 
 ## Proof of Concept (PoC)
-### Request
-[HTTP raw request or payload]
-### Expected Behavior
-[What the app should do]
-### Actual Behavior
-[What the app actually does]
-### Evidence
-- Highlight specific code patterns or documentation showing why this is predictable behavior.
+- [Step 1]
+- [Step 2]
+- **Payload:** \`[Payload]\`
 
-## Impact
-Classification (e.g., Critical P1 - Sensitive Data Access). Detail what is at risk (e.g., .env files, API keys).
+## Impact Escalation Path
+- **Immediate:** [Direct consequence]
+- **Lateral Movement:** [How this pivots to IAM/Cloud/Internal Auth]
+- **Critical Outcome:** [Total system state at end of path]
 
-## Remediation (vX.X)
-Detailed fix recommendation (e.g., path.resolve, allowlisting). Mention the differentiated value of the provided patch.
+## High-Value Targets (HVT)
+- [Target 1]: [Brief technical reasoning]
+- [Target 2]: [Brief technical reasoning]
+
+## Remediation Strategy
+- **Primary:** [Main technical fix]
+- **Defense in Depth:** [Secondary hardening]
 
 ---
 
 ## AI-Assisted Analysis Disclosure
-This report was generated with the assistance of a multimodal AI pipeline (Gemini 1.5 Pro/Flash).
+Audit performed via multimodal pipeline (Gemini 3.x). Result grounded in static analysis. Manual validation required.
 
-### Usage Scope
-AI was used for report structuring, formatting, and static analysis reasoning support.
-
-### Control Measures
-- Grounded in provided code and deterministic runtime behavior.
-- Source → Sink confirmation required.
-- Human review is mandatory.
-
----
-
-## Important Security Notes
-- **No Reward Speculation:** Reward calculation is defined exclusively by the program owner.
-- **Ethical Statement:** This report follows responsible disclosure principles.
-
----
-
-### 🛡️ Integrity Clauses and Methodology
-1. **Researcher Mindset:** Prepared by Ana Caroline Lamas (Google Cloud Skills Boost - Gen AI Certified), applying zero-trust security frameworks.
-2. **Zero Trust Principle:** External input is never trusted until sanitized.
-3. **Human Validation:** Assistive AI document; findings must be manually validated.
-4. **Session ID:** [Include Session ID]
-
-KNOWLEDGE BASE:
-- GENERAL VRP: S0 (RCE), S1 (Data Access), S2 (Logic), C0 (XSS), C1 (CSRF/Auth).
-- AI VRP: A1 (Phishing), A2 (Model Theft), A3 (Context Manipulation), A4 (Access Bypass).
-- OSS VRP:
-    - Tiers: OT0 (Flagship), OT1 (Important), OT2 (Standard), OT3 (Low-priority).
-    - OSS Categories: Supply Chain (Source/Build Integrity), Product Vulnerability (Code vulnerabilities), Other (Insider Risk).
-    - Criteria: OT0/OT1 require robust PoC; OT2 require merged patch for product rewards.
-
-OUTPUT:
-Your response must be strictly in valid JSON according to the schema.
+### Integrity Metadata
+- Researcher: Ana Caroline Lamas (Google Gen AI Certified)
+- Logic Flow: Deterministic
+- Session ID: [ID]
 `;
 
 const SYSTEM_INSTRUCTION_ANALYSIS_H1 = `
@@ -169,8 +134,10 @@ export const analyzePatch = async (
   useThinking: boolean = false,
   customRules: string = "",
   history: AnalysisResult[] = [],
-  platform: 'google_vrp' | 'hackerone' = 'google_vrp'
+  platform: 'google_vrp' | 'hackerone' = 'google_vrp',
+  apiKey?: string
 ): Promise<{ analysis: AnalysisResult; verification: VerificationResult }> => {
+  const ai = new GoogleGenAI({ apiKey: apiKey || (process.env.GEMINI_API_KEY as string) });
   const startTime = Date.now();
   
   const systemInstruction = platform === 'google_vrp' 
@@ -243,7 +210,9 @@ EXPLAINABILITY REQUIREMENTS:
           fluxo_confirmado: { type: Type.BOOLEAN },
           sanitizacao: { type: Type.STRING, description: "Descrição do estado da sanitização (ex: 'ausente (v1.0) / adequada (v1.1)')." },
           impacto_real: { type: Type.BOOLEAN },
-          modelagem_ataque: { type: Type.STRING },
+          modelagem_ataque: { type: Type.STRING, description: "Detailed narrative of the attack scenario." },
+          escalation_path: { type: Type.STRING, description: "Step-by-step technical progression to critical impact." },
+          hvt_affected: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Specific high-value targets (files, database tables, etc.) at risk." },
           poc_reproducao: { type: Type.STRING, description: "Payload ou lógica de requisição (JSON, URL params) para demonstrar a falha MANUALMENTE." },
           poc_passos: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Passos numerados para reprodução." },
           policy_violada: { type: Type.STRING, description: "Políticas do Google VRP (S1, S2) ou OWASP (A01:2021) violadas." },

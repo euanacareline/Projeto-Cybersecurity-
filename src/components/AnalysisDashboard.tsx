@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { Shield, ShieldCheck, AlertTriangle, Fingerprint, Search, Info, CheckCircle2, XCircle, Zap, Activity, FileCode, BookOpen, UserCheck, Scale, Globe } from 'lucide-react';
+import { Shield, ShieldCheck, AlertTriangle, Fingerprint, Search, Info, CheckCircle2, XCircle, Zap, Activity, FileCode, BookOpen, UserCheck, Scale, Globe, Target } from 'lucide-react';
 import { SecurityAnalysis } from '../types';
 import { Badge } from './ui/Badge';
 import { cn } from '../lib/utils';
@@ -182,7 +182,7 @@ export const AnalysisDashboard = ({ analysis }: AnalysisDashboardProps) => {
             <h3 className="text-[11px] font-mono uppercase tracking-widest text-zinc-500 mb-6 flex items-center gap-2">
               <Shield size={14} /> Threat Modeling & Attack Path
             </h3>
-            <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-6">
               <div className="flex flex-wrap items-center gap-3">
                 {(result.modelagem_ataque || '').split('->').map((step, idx, arr) => (
                   <React.Fragment key={idx}>
@@ -200,8 +200,37 @@ export const AnalysisDashboard = ({ analysis }: AnalysisDashboardProps) => {
                   </React.Fragment>
                 ))}
               </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-zinc-800/50">
+                {result.escalation_path && (
+                  <div className="space-y-3">
+                    <h4 className="text-[10px] font-mono uppercase text-amber-500 flex items-center gap-2">
+                      <Activity size={12} /> Impact Escalation Steps
+                    </h4>
+                    <div className="prose prose-invert prose-xs text-zinc-400 font-mono leading-relaxed bg-black/20 p-3 rounded border border-zinc-800">
+                      <ReactMarkdown>{result.escalation_path}</ReactMarkdown>
+                    </div>
+                  </div>
+                )}
+                
+                {result.hvt_affected && result.hvt_affected.length > 0 && (
+                  <div className="space-y-3">
+                    <h4 className="text-[10px] font-mono uppercase text-red-500 flex items-center gap-2">
+                      <Target size={12} /> High-Value Targets (HVT)
+                    </h4>
+                    <div className="flex flex-wrap gap-2">
+                      {result.hvt_affected.map((hvt, i) => (
+                        <div key={i} className="px-2 py-1 bg-red-500/5 border border-red-500/20 rounded text-[10px] font-mono text-red-400">
+                          {hvt}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
               <p className="text-[10px] text-zinc-600 italic">
-                Visual path generated based on the identified Source → Sink trace.
+                Visual path and escalation strategy generated based on the identified Source → Sink trace.
               </p>
             </div>
           </section>
