@@ -44,7 +44,7 @@ export const MethodologyCard = () => {
             <h4 className="text-xs font-bold text-zinc-200 uppercase tracking-tight">VRP Grounding</h4>
           </div>
           <p className="text-[11px] text-zinc-500 leading-relaxed">
-            Conformidade estrita com as regras do <strong>Google Bug Hunters</strong>. Foco em XSLeaks, Logic Flaws e AI Safety (A1-A6) para evitar duplicatas.
+            Conformidade estrita com as regras do <strong>Google Bug Hunters</strong>. Foco em XSLeaks, Logic Flaws e Safety Models (A1-A6) para evitar duplicatas.
           </p>
         </div>
       </div>

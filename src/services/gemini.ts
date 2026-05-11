@@ -1,130 +1,61 @@
 import { GoogleGenAI, Type, ThinkingLevel } from "@google/genai";
 import { AnalysisResult, VerificationResult } from "../types";
 
-const SYSTEM_INSTRUCTION_ANALYSIS = `
-YOU ARE THE GOOGLE VRP TRIAGE ROBOT (TriageBot-v4.0) - HARDENED AUDIT MODE.
-Your mission: Extreme technical precision. Zero conversational noise. Identify the "Path to Criticality".
+const SYSTEM_INSTRUCTION_ANALYSIS = `Você é o Kernel do Cyber Hunter Lab (v5.5 Elite Turbo).
+Objetivo: Auditoria de Segurança de Código Fonte (Lógica P1/P2).
 
-CORE RIGOR GUIDELINES:
-1. IMPACT ESCALATION: Map technical progression to high severity. (e.g., Code Disclosure -> Hardcoded IAM Keys -> Service Account Takeover).
-2. TELEGRAPHIC STYLE: Use dense, technical language. No filler. No "It's important to note". Go directly to Sinks and lateral movement (GCP/IAM/K8s).
-3. NO REWARD SPECULATION: NEVER include monetary values ($).
-4. LOGICAL DETERMINISM: Confirm full Source → Sink flow.
+ESTRUTURA OBRIGATÓRIA DO CAMPO 'relatorio_markdown' (EM INGLÊS):
+O relatório deve ser dividido em 3 seções claras para o TRIADOR do VRP:
 
-MANDATORY TECHNICAL RULES:
-1. SOURCE → SINK Rule: Map the attack surface precisely.
-2. LATERAL MOVEMENT: Analyze pivots to cloud infrastructure (GCP metadata, IAM tokens, service account keys).
-3. IMPACT DEPTH Rule: List High-Value Targets (HVT) like .env, /etc/passwd, secrets.json, service-account-keys.json.
-4. ANTI-DUPLICATE Rule: Highlight PATCH VALIDATION as the technical differentiator.
-5. REPORT STRUCTURE (TECHNICAL DENSITY FOCUS):
-The 'relatorio_markdown' field MUST follow this structure:
+# [TITLE]
+## 1. Executive Summary (Triage Fast-Track)
+- Nature of vulnerability.
+- Proof of authority/access bypass.
+- Risk level (P1/P2).
 
-# [Vulnerability Name] - Impact Analysis
+## 2. Technical Deep-Dive
+- Vulnerability Class (CWE).
+- Source-to-Sink Analysis.
+- Business Logic Impact.
+- Evidence pointing to specific files.
 
-## Execution Summary
-[Dense technical summary of flaw + immediate sink]
+## 3. Automated Reproduction & Patch
+- Reproduction: [Step-by-step]
+- PoC: [Python/cURL Code Block]
+- Dual-Patch: [Vulnerable Code vs. Mitigated Code Block]
 
-## Vulnerability Flow
-- **Source:** [Input point]
-- **Sink:** [Vulnerable function/API]
-- **Mechanism:** [Technical root cause]
+FILTROS DE AUDITORIA:
+- Excessive Data Exposure (Falta de Mappers).
+- Double Encoding Bypasses.
+- IDOR/Bypasses de contexto (JSON vs YAML).
 
-## Proof of Concept (PoC)
-- [Step 1]
-- [Step 2]
-- **Payload:** \`[Payload]\`
+REGRAS: Linguagem fria, técnica, profissional. Responda o JSON em Português (Exceto o MD do relatório).`;
 
-## Impact Escalation Path
-- **Immediate:** [Direct consequence]
-- **Lateral Movement:** [How this pivots to IAM/Cloud/Internal Auth]
-- **Critical Outcome:** [Total system state at end of path]
+const SYSTEM_INSTRUCTION_ANALYSIS_H1 = `Você é o Kernel Turbo do HackerOne. 
+FOCO: Time-to-Triage reduzido.
 
-## High-Value Targets (HVT)
-- [Target 1]: [Brief technical reasoning]
-- [Target 2]: [Brief technical reasoning]
+ESTRUTURA DO RELATÓRIO (H1 STANDARD):
+1. Summary & Impact.
+2. Automated PoC.
+3. Remediation (Dual-Patch System).
 
-## Remediation Strategy
-- **Primary:** [Main technical fix]
-- **Defense in Depth:** [Secondary hardening]
-
----
-
-## AI-Assisted Analysis Disclosure
-Audit performed via multimodal pipeline (Gemini 3.x). Result grounded in static analysis. Manual validation required.
-
-### Integrity Metadata
-- Researcher: Ana Caroline Lamas (Google Gen AI Certified)
-- Logic Flow: Deterministic
-- Session ID: [ID]
-`;
-
-const SYSTEM_INSTRUCTION_ANALYSIS_H1 = `
-YOU ARE THE HACKERONE ELITE RESEARCHER ASSISTANT.
-Your mission is to generate high-quality vulnerability reports following the HackerOne disclosure format.
-
-LANGUAGE REQUIREMENT:
-- ALL OUTPUT (Analysis and Markdown Report) MUST BE IN ENGLISH.
-
-CORE RIGOR GUIDELINES:
-1. WEAKNESS SELECTION: Use precise CWE identifiers (e.g., CWE-22, CWE-79).
-2. REAL-WORLD IMPACT: Focus on how this affects business logic, data confidentiality, or system integrity.
-3. CLEAR STEPS TO REPRODUCE: Provide a logical flow that any security engineer can follow to verify the bug.
-
-REPORT STRUCTURE (HACKERONE DISCLOSURE FORMAT):
-The 'relatorio_markdown' field MUST follow this structure:
-
-# [Title of the vulnerability]
-
-## Summary
-A clear and concise description of the vulnerability.
-
-## Components Affected
-List the specific files, endpoints, or parameters.
-
-## Steps To Reproduce
-1. [Step 1]
-2. [Step 2]
-3. [Payload or configuration example]
-
-## Supporting Material/References
-- [Code snippets]
-- [CWE links]
-
-## Impact
-Explain what an attacker can achieve. Use technical terms but explain the business risk.
-
-## Suggested Mitigation/Workaround
-How to fix the issue (e.g., v1.1 patch details).
-
----
-
-## AI-Assisted Security Audit
-This finding was identified using an automated multimodal scanner based on Gemini 1.5.
-
-### Integrity Metadata
-- Researcher: Ana Caroline Lamas (g.dev/anacarolinelamas)
-- Validation: Static Analysis Deterministic
-- Session ID: [Include Session ID]
-`;
+CWE OBRIGATÓRIO.`;
 
 const SYSTEM_INSTRUCTION_VERIFICATION = `
 ROLE:
-You are a Google VRP Red Team Auditor.
+Audit Auditor (Cyber Hunter Lab).
 
 TASK:
-Audit the previous analysis to ensure strict compliance with Advanced Technical Scope and VRP rules (including OSS VRP).
+Validação ultra-rápida de integridade técnica.
 
-AUDIT CHECKLIST:
-- Is there a confirmed SOURCE → SINK flow?
-- Is the evidence real and pointing to existing lines of code?
-- Is the impact real or purely theoretical?
-- Does the project's Tier (OT0-OT3) and reward estimate make sense for OSS VRP if applicable?
-- Were there any assumptions or "logical jumps"?
-- Is the report in English?
+CHECKLIST:
+- Existe fluxo SOURCE → SINK real?
+- A evidência aponta para linhas existentes?
+- O PoC é tecnicamente viável?
 
 RULES:
-- If any answer is negative, force the status to "inconclusive".
-- Do not add new vulnerabilities; only validate the robustness of the previous analysis.
+- Seja implacável. Se houver "salto lógico", force status "inconclusivo".
+- Se a análise for sólida, valide instantaneamente.
 `;
 
 export const analyzePatch = async (
@@ -135,20 +66,56 @@ export const analyzePatch = async (
   customRules: string = "",
   history: AnalysisResult[] = [],
   platform: 'google_vrp' | 'hackerone' = 'google_vrp',
-  apiKey?: string
-): Promise<{ analysis: AnalysisResult; verification: VerificationResult }> => {
-  const ai = new GoogleGenAI({ apiKey: apiKey || (process.env.GEMINI_API_KEY as string) });
+  userApiKey?: string | null,
+  safeMode: boolean = true
+): Promise<{ analysis: AnalysisResult; verification: VerificationResult | undefined }> => {
+  const apiKey = userApiKey || process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+    throw new Error("Mathematical Core Depleted: Please provide a Google AI API Key.");
+  }
+  const ai = new GoogleGenAI({ apiKey });
+  
+  // High-performance retry logic
+  const generateWithRetry = async (model: string, contents: any, config: any, maxRetries = 2) => {
+    let lastError: any;
+    for (let i = 0; i < maxRetries; i++) {
+      try {
+        const response = await ai.models.generateContent({
+          model,
+          contents,
+          config
+        });
+        return response;
+      } catch (error: any) {
+        lastError = error;
+        const isRateLimit = error.message?.includes("429") || error.message?.includes("Resource has been exhausted");
+        
+        if (isRateLimit && i < maxRetries - 1) {
+          const delay = 1000 * (i + 1); 
+          await new Promise(resolve => setTimeout(resolve, delay));
+          continue;
+        }
+        throw error;
+      }
+    }
+    throw lastError;
+  };
+
   const startTime = Date.now();
   
-  const systemInstruction = platform === 'google_vrp' 
+  let systemInstruction = platform === 'google_vrp' 
     ? SYSTEM_INSTRUCTION_ANALYSIS 
     : SYSTEM_INSTRUCTION_ANALYSIS_H1;
+
+  if (!safeMode) {
+    systemInstruction += `\n\n[OFFENSIVE MODE]: Prioritize P1/Critical. Focus on WAF bypass and logic exfiltration.`;
+  }
   
-  // Otimização de Pipeline: 
-  // Se 'useThinking' for true, usamos o Pro 3.1 para raciocínio profundo.
-  // Se for false, usamos o Flash 3 para "Alta Velocidade" atendendo o pedido de "está demorando".
+  // Otimização de Velocidade: 
+  // Forçamos modelos Flash para máxima velocidade a menos que o usuário peça explicitamente o Pro.
   const modelName = useThinking ? "gemini-3.1-pro-preview" : "gemini-3-flash-preview";
-  
+  const verificationModel = "gemini-3-flash-preview"; // Sempre flash para verificação ser rápida
+
   const historySummary = history.length > 0 
     ? `HISTÓRICO DE VULNERABILIDADES JÁ ENCONTRADAS (Para verificar Dulplicata):\n${history.map(h => `- ${h.vulnerabilidade} (${h.tipo})`).join('\n')}`
     : "Nenhum histórico prévio disponível.";
@@ -179,14 +146,14 @@ EXPLAINABILITY REQUIREMENTS:
 `;
 
   // 1. Primary Analysis
-  const analysisResponse = await ai.models.generateContent({
-    model: modelName,
-    contents: prompt,
-    config: {
+  const analysisResponse = await generateWithRetry(
+    modelName,
+    prompt,
+    {
       systemInstruction: systemInstruction,
       responseMimeType: "application/json",
       temperature: 0,
-      thinkingConfig: useThinking ? { thinkingLevel: ThinkingLevel.HIGH } : { thinkingLevel: ThinkingLevel.MINIMAL },
+      ...(useThinking ? { thinkingConfig: { thinkingLevel: ThinkingLevel.HIGH } } : {}),
       responseSchema: {
         type: Type.OBJECT,
         properties: {
@@ -195,6 +162,7 @@ EXPLAINABILITY REQUIREMENTS:
           evidencia: { type: Type.STRING },
           linhas_afetadas: { type: Type.ARRAY, items: { type: Type.STRING } },
           impacto: { type: Type.STRING, enum: ["baixo", "medio", "alto", "critico"] },
+          severidade: { type: Type.STRING, enum: ["LOW", "MEDIUM", "HIGH", "CRITICAL"] },
           vrp_category: { type: Type.STRING, enum: ["S0", "S1", "S2", "C0", "C1", "A1", "A2", "A3", "A4", "A5", "A6", "OSS_Supply_Chain", "OSS_Product", "Outro"] },
           oss_vrp_tier: { type: Type.STRING, enum: ["OT0", "OT1", "OT2", "OT3"], nullable: true },
           triage_priority: { type: Type.STRING, enum: ["P0", "P1", "P2", "P3", "P4"] },
@@ -210,23 +178,21 @@ EXPLAINABILITY REQUIREMENTS:
           fluxo_confirmado: { type: Type.BOOLEAN },
           sanitizacao: { type: Type.STRING, description: "Descrição do estado da sanitização (ex: 'ausente (v1.0) / adequada (v1.1)')." },
           impacto_real: { type: Type.BOOLEAN },
-          modelagem_ataque: { type: Type.STRING, description: "Detailed narrative of the attack scenario." },
-          escalation_path: { type: Type.STRING, description: "Step-by-step technical progression to critical impact." },
-          hvt_affected: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Specific high-value targets (files, database tables, etc.) at risk." },
+          modelagem_ataque: { type: Type.STRING },
           poc_reproducao: { type: Type.STRING, description: "Payload ou lógica de requisição (JSON, URL params) para demonstrar a falha MANUALMENTE." },
           poc_passos: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Passos numerados para reprodução." },
           policy_violada: { type: Type.STRING, description: "Políticas do Google VRP (S1, S2) ou OWASP (A01:2021) violadas." },
           relatorio_markdown: { type: Type.STRING, description: "Relatório profissional completo em Markdown." },
         },
         required: [
-          "vulnerabilidade", "evidencia", "impacto", "vrp_category", "triage_priority",
+          "vulnerabilidade", "evidencia", "impacto", "severidade", "vrp_category", "triage_priority",
           "patch_corrige", "confianca", "status", "justificativa", 
           "source", "sink", "fluxo_confirmado", "sanitizacao", "impacto_real",
           "modelagem_ataque", "poc_passos", "policy_violada", "relatorio_markdown"
         ],
       },
-    },
-  });
+    }
+  );
 
   const rawAnalysis = JSON.parse(analysisResponse.text) as AnalysisResult;
   const endTime = Date.now();
@@ -243,8 +209,12 @@ EXPLAINABILITY REQUIREMENTS:
     }
   };
 
-  // 2. Secondary Verification (Expert Auditor)
-  const verificationModel = useThinking ? "gemini-3.1-pro-preview" : "gemini-3-flash-preview";
+  // 2. Secondary Verification (Expert Auditor) - Only if thinking is requested or manually triggered
+  // To satisfy "Ta demorando", we skip verification in high-speed mode
+  if (!useThinking) {
+    return { analysis: analysisResult, verification: undefined };
+  }
+
   const verificationPrompt = `
 AUDIT THIS ANALYSIS:
 ORIGINAL CODE:
@@ -258,10 +228,10 @@ TASK:
 Verify if the analysis is technically sound or contains hallucinations. Return result in JSON.
 `;
 
-  const verificationResponse = await ai.models.generateContent({
-    model: verificationModel,
-    contents: verificationPrompt,
-    config: {
+  const verificationResponse = await generateWithRetry(
+    verificationModel,
+    verificationPrompt,
+    {
       systemInstruction: SYSTEM_INSTRUCTION_VERIFICATION,
       responseMimeType: "application/json",
       temperature: 0,
@@ -277,8 +247,8 @@ Verify if the analysis is technically sound or contains hallucinations. Return r
         },
         required: ["is_valid", "found_assumptions", "evidence_exists", "final_confidence", "final_status", "feedback"],
       },
-    },
-  });
+    }
+  );
 
   const verificationResult = JSON.parse(verificationResponse.text) as VerificationResult;
 

@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { Shield, ShieldCheck, AlertTriangle, Fingerprint, Search, Info, CheckCircle2, XCircle, Zap, Activity, FileCode, BookOpen, UserCheck, Scale, Globe, Target } from 'lucide-react';
+import { Shield, ShieldCheck, AlertTriangle, Fingerprint, Search, Info, CheckCircle2, XCircle, Zap, Activity, FileCode, BookOpen, UserCheck, Scale, Globe, Copy, Download } from 'lucide-react';
 import { SecurityAnalysis } from '../types';
 import { Badge } from './ui/Badge';
 import { cn } from '../lib/utils';
@@ -13,6 +13,27 @@ interface AnalysisDashboardProps {
 export const AnalysisDashboard = ({ analysis }: AnalysisDashboardProps) => {
   const result = analysis.result;
   const verification = analysis.verification;
+
+  const exportPoCScript = (content: string) => {
+    const isPython = content.includes('import') || content.includes('def ');
+    const ethicalHeader = `# AVISO: Este script de PoC (Prova de Conceito) destina-se exclusivamente a fins de validação técnica autorizada. 
+# O uso contra sistemas sem permissão explícita é ilegal e viola os termos de conduta do Cyber Hunter Lab.
+# Gerado por: Cyber Hunter Lab | Trusted Researcher Process\n\n`;
+    
+    // Prepend header if not already present
+    const finalContent = content.includes('AVISO: Este script de PoC') ? content : (ethicalHeader + content);
+    
+    const filename = `poc_cyberhunter_${Date.now()}.${isPython ? 'py' : 'txt'}`;
+    const blob = new Blob([finalContent], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
 
   const getImpactColor = (impact: string) => {
     switch (impact) {
@@ -36,14 +57,14 @@ export const AnalysisDashboard = ({ analysis }: AnalysisDashboardProps) => {
         result.oss_vrp_tier ? "md:grid-cols-7" : "md:grid-cols-6"
       )}>
         <StatItem label="Vulnerabilidade" value={result.vulnerabilidade || 'Nenhuma'} />
-        <StatItem label="Cat VRP" value={result.vrp_category || 'N/A'} variant="info" />
+        <StatItem label="Cat VRP" value={result.vrp_category} variant="info" />
         {result.oss_vrp_tier && (
           <StatItem label="OSS Tier" value={result.oss_vrp_tier} variant="neutral" />
         )}
-        <StatItem label="Impact" value={result.impacto || 'N/A'} variant={getImpactColor(result.impacto)} />
-        <StatItem label="Dup Risk" value={result.risco_duplicata || 'baixo'} variant={result.risco_duplicata === 'baixo' ? 'success' : (result.risco_duplicata === 'alto' ? 'danger' : 'warning')} />
-        <StatItem label="Priority" value={result.triage_priority || 'P3'} variant="neutral" />
-        <StatItem label="Audit" value={verification?.final_status || result.status || 'Pendente'} variant={verification?.final_status === 'confirmado' ? 'success' : 'neutral'} />
+        <StatItem label="Impact" value={result.impacto} variant={getImpactColor(result.impacto)} />
+        <StatItem label="Dup Risk" value={result.risco_duplicata} variant={result.risco_duplicata === 'baixo' ? 'success' : (result.risco_duplicata === 'alto' ? 'danger' : 'warning')} />
+        <StatItem label="Priority" value={result.triage_priority} variant="neutral" />
+        <StatItem label="Audit" value={verification?.final_status || result.status} variant={verification?.final_status === 'confirmado' ? 'success' : 'neutral'} />
         <div className="bg-emerald-600 flex items-center justify-center cursor-pointer hover:bg-emerald-500 transition-colors" title="Copiar Relatório Completo" onClick={() => navigator.clipboard.writeText(result.relatorio_markdown)}>
           <Zap size={18} className="text-white" />
         </div>
@@ -95,8 +116,8 @@ export const AnalysisDashboard = ({ analysis }: AnalysisDashboardProps) => {
             <div className="bg-zinc-900/40 p-4 border-t border-zinc-800 flex flex-wrap items-center gap-8">
               <div className="flex flex-col min-w-[120px]">
                 <span className="text-[9px] font-mono uppercase text-zinc-500 mb-1">Sanitization Analysis</span>
-                <span className={`text-[11px] font-bold uppercase ${result.sanitizacao?.includes('adequate') || result.sanitizacao?.includes('adequada') ? 'text-emerald-500' : 'text-amber-500'}`}>
-                  {result.sanitizacao}
+                <span className={`text-[11px] font-bold uppercase ${(result.sanitizacao || '').includes('adequate') || (result.sanitizacao || '').includes('adequada') ? 'text-emerald-500' : 'text-amber-500'}`}>
+                  {result.sanitizacao || 'Analysis Pending'}
                 </span>
               </div>
               
@@ -108,8 +129,8 @@ export const AnalysisDashboard = ({ analysis }: AnalysisDashboardProps) => {
                 <div className="h-1 w-full bg-zinc-800 rounded-full overflow-hidden">
                   <motion.div 
                     initial={{ width: 0 }}
-                    animate={{ width: `${result.confianca * 100}%` }}
-                    className={`h-full ${result.confianca >= 0.9 ? 'bg-emerald-500' : result.confianca >= 0.7 ? 'bg-blue-500' : 'bg-amber-500'}`}
+                    animate={{ width: `${(result.confianca || 0) * 100}%` }}
+                    className={`h-full ${(result.confianca || 0) >= 0.9 ? 'bg-emerald-500' : (result.confianca || 0) >= 0.7 ? 'bg-blue-500' : 'bg-amber-500'}`}
                   />
                 </div>
               </div>
@@ -125,22 +146,68 @@ export const AnalysisDashboard = ({ analysis }: AnalysisDashboardProps) => {
             </div>
           </section>
 
-          <section className="bg-[#1a1a1a] border border-zinc-800 rounded-lg p-6">
-            <h3 className="text-[11px] font-mono uppercase tracking-widest text-zinc-500 mb-4 flex items-center gap-2">
-              <Fingerprint size={14} /> Leak Evidence
+          <section className="bg-[#1a1a1a] border border-zinc-800 rounded-lg p-8">
+            <h3 className="text-[11px] font-mono uppercase tracking-[0.3em] text-emerald-500 mb-8 flex items-center gap-2 border-b border-emerald-500/10 pb-2">
+              <Shield size={14} /> Auditoria de Kernel
             </h3>
-            <div className="prose prose-invert prose-sm max-w-none text-zinc-300 font-mono text-[13px] leading-relaxed">
-              <ReactMarkdown>{result.evidencia}</ReactMarkdown>
-            </div>
             
-            {result.linhas_afetadas && result.linhas_afetadas.length > 0 && (
-              <div className="mt-6 flex flex-wrap gap-2">
-                <span className="text-[10px] font-mono text-zinc-500 uppercase tracking-tighter mr-2">Target Lines:</span>
-                {result.linhas_afetadas.map((line, idx) => (
-                  <Badge key={idx} variant="neutral">{line}</Badge>
-                ))}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-10 text-left">
+              <div className="bg-zinc-900/30 p-6 rounded-xl border border-zinc-800/50">
+                <p className="text-[10px] font-mono text-zinc-500 uppercase mb-2">Vulnerabilidade Identificada</p>
+                <p className="text-xl font-bold text-white tracking-tight leading-tight">{result.vulnerabilidade || 'Análise Concluída'}</p>
               </div>
-            )}
+              <div className="bg-zinc-900/30 p-6 rounded-xl border border-zinc-800/50">
+                <p className="text-[10px] font-mono text-zinc-500 uppercase mb-2">Classe de Risco (CWE)</p>
+                <div className="flex items-center gap-3">
+                  <span className={cn(
+                    "px-3 py-1 rounded text-xs font-bold uppercase",
+                    result.severidade === 'CRITICAL' ? "bg-red-500/20 text-red-400 border border-red-500/30" :
+                    result.severidade === 'HIGH' ? "bg-orange-500/20 text-orange-400 border border-orange-500/30" :
+                    "bg-yellow-500/20 text-yellow-400 border border-yellow-500/30"
+                  )}>
+                    {result.severidade}
+                  </span>
+                  <span className="text-zinc-400 text-sm font-mono">{result.tipo}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-12">
+              <section>
+                <div className="flex items-center justify-between mb-6">
+                  <h4 className="text-[10px] font-mono uppercase tracking-widest text-zinc-500 border-l-2 border-emerald-500 pl-4">Relatório de Triage (Tripartite Engine)</h4>
+                  <div className="flex gap-2">
+                    <button 
+                      onClick={() => navigator.clipboard.writeText(result.relatorio_markdown)}
+                      className="p-1.5 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 rounded transition-colors text-zinc-400 hover:text-white"
+                      title="Copy Content"
+                    >
+                      <Copy size={14} />
+                    </button>
+                    <a 
+                      href={`data:text/markdown;charset=utf-8,${encodeURIComponent(result.relatorio_markdown)}`}
+                      download={`CyberHunter_Audit_${Date.now()}.md`}
+                      className="p-1.5 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 rounded transition-colors text-zinc-400 hover:text-white"
+                      title="Download Analysis"
+                    >
+                      <Download size={14} />
+                    </a>
+                  </div>
+                </div>
+                <div className="prose prose-invert prose-base max-w-none text-zinc-300 font-mono text-sm leading-relaxed bg-[#0a0a0a] p-8 rounded-2xl border border-zinc-900 shadow-2xl overflow-x-auto">
+                  <ReactMarkdown>{result.relatorio_markdown || ''}</ReactMarkdown>
+                </div>
+              </section>
+
+              <section className="bg-zinc-950/50 p-8 rounded-2xl border border-zinc-900/50">
+                <h4 className="text-[10px] font-mono uppercase tracking-widest text-zinc-500 mb-6 flex items-center gap-2">
+                  <Fingerprint size={14} className="text-emerald-500" /> Grounding Evidence
+                </h4>
+                <div className="prose prose-invert prose-sm max-w-none text-zinc-400 font-mono text-sm leading-relaxed italic border-l-2 border-zinc-800 pl-6">
+                  <ReactMarkdown>{result.evidencia || ''}</ReactMarkdown>
+                </div>
+              </section>
+            </div>
           </section>
 
           <section className="bg-[#1a1a1a] border border-zinc-800 rounded-lg p-6">
@@ -182,55 +249,29 @@ export const AnalysisDashboard = ({ analysis }: AnalysisDashboardProps) => {
             <h3 className="text-[11px] font-mono uppercase tracking-widest text-zinc-500 mb-6 flex items-center gap-2">
               <Shield size={14} /> Threat Modeling & Attack Path
             </h3>
-            <div className="flex flex-col gap-6">
+            <div className="flex flex-col gap-4">
               <div className="flex flex-wrap items-center gap-3">
-                {(result.modelagem_ataque || '').split('->').map((step, idx, arr) => (
-                  <React.Fragment key={idx}>
-                    <div className={cn(
-                      "px-4 py-2 rounded border font-mono text-[10px] uppercase tracking-tighter",
-                      idx === 0 ? "bg-blue-500/10 border-blue-500/50 text-blue-400" :
-                      idx === arr.length - 1 ? "bg-red-500/10 border-red-500/50 text-red-400 font-bold" :
-                      "bg-zinc-800 border-zinc-700 text-zinc-400"
-                    )}>
-                      {step.trim()}
-                    </div>
-                    {idx < arr.length - 1 && (
-                      <Search size={12} className="text-zinc-700" />
-                    )}
-                  </React.Fragment>
-                ))}
+                {(result.modelagem_ataque || "").split('->').map((step, idx) => {
+                  const steps = (result.modelagem_ataque || "").split('->');
+                  return (
+                    <React.Fragment key={idx}>
+                      <div className={cn(
+                        "px-4 py-2 rounded border font-mono text-[10px] uppercase tracking-tighter",
+                        idx === 0 ? "bg-blue-500/10 border-blue-500/50 text-blue-400" :
+                        idx === steps.length - 1 ? "bg-red-500/10 border-red-500/50 text-red-400 font-bold" :
+                        "bg-zinc-800 border-zinc-700 text-zinc-400"
+                      )}>
+                        {step.trim()}
+                      </div>
+                      {idx < steps.length - 1 && (
+                        <Search size={12} className="text-zinc-700" />
+                      )}
+                    </React.Fragment>
+                  );
+                })}
               </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-zinc-800/50">
-                {result.escalation_path && (
-                  <div className="space-y-3">
-                    <h4 className="text-[10px] font-mono uppercase text-amber-500 flex items-center gap-2">
-                      <Activity size={12} /> Impact Escalation Steps
-                    </h4>
-                    <div className="prose prose-invert prose-xs text-zinc-400 font-mono leading-relaxed bg-black/20 p-3 rounded border border-zinc-800">
-                      <ReactMarkdown>{result.escalation_path}</ReactMarkdown>
-                    </div>
-                  </div>
-                )}
-                
-                {result.hvt_affected && result.hvt_affected.length > 0 && (
-                  <div className="space-y-3">
-                    <h4 className="text-[10px] font-mono uppercase text-red-500 flex items-center gap-2">
-                      <Target size={12} /> High-Value Targets (HVT)
-                    </h4>
-                    <div className="flex flex-wrap gap-2">
-                      {result.hvt_affected.map((hvt, i) => (
-                        <div key={i} className="px-2 py-1 bg-red-500/5 border border-red-500/20 rounded text-[10px] font-mono text-red-400">
-                          {hvt}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-
               <p className="text-[10px] text-zinc-600 italic">
-                Visual path and escalation strategy generated based on the identified Source → Sink trace.
+                Visual path generated based on the identified Source → Sink trace.
               </p>
             </div>
           </section>
@@ -260,12 +301,20 @@ export const AnalysisDashboard = ({ analysis }: AnalysisDashboardProps) => {
                 <div className="space-y-2">
                   <h4 className="text-[10px] font-mono uppercase text-zinc-500 border-b border-zinc-800 pb-1 flex items-center justify-between">
                     Reproduction Payload
-                    <button 
-                      onClick={() => navigator.clipboard.writeText(result.poc_reproducao!)}
-                      className="text-[9px] hover:text-white transition-colors"
-                    >
-                      COPY
-                    </button>
+                    <div className="flex gap-3">
+                      <button 
+                        onClick={() => navigator.clipboard.writeText(result.poc_reproducao!)}
+                        className="text-[9px] hover:text-white transition-colors"
+                      >
+                        COPY
+                      </button>
+                      <button 
+                        onClick={() => exportPoCScript(result.poc_reproducao!)}
+                        className="text-[9px] text-emerald-500 hover:text-emerald-400 transition-colors uppercase font-bold"
+                      >
+                        Export Script
+                      </button>
+                    </div>
                   </h4>
                   <pre className="bg-black/40 p-3 rounded border border-zinc-800 text-[10px] font-mono text-blue-400 overflow-x-auto">
                     {result.poc_reproducao}
@@ -274,41 +323,51 @@ export const AnalysisDashboard = ({ analysis }: AnalysisDashboardProps) => {
               )}
             </div>
 
-            <div className="p-4 bg-emerald-500/5 border border-emerald-500/20 rounded-lg space-y-4">
+            <div className="p-6 bg-emerald-500/5 border border-emerald-500/20 rounded-2xl space-y-6">
               <div className="flex items-center justify-between">
-                <h4 className="text-[10px] font-mono uppercase text-emerald-500/70 flex items-center gap-2">
-                  <CheckCircle2 size={12} /> Google VRP Submission Report
-                </h4>
-                <button 
-                  onClick={() => navigator.clipboard.writeText(result.relatorio_markdown)}
-                  className="px-3 py-1 bg-emerald-500 text-black text-[9px] font-bold rounded hover:bg-emerald-400 transition-all uppercase tracking-widest"
-                >
-                  Copy Full Report (Markdown)
-                </button>
-              </div>
-              <div className="prose prose-invert prose-xs max-w-none text-zinc-300 font-mono text-[11px] leading-relaxed border-t border-emerald-500/10 pt-4">
-                <ReactMarkdown>{result.relatorio_markdown}</ReactMarkdown>
+                <div className="space-y-1">
+                  <h4 className="text-[10px] font-mono uppercase text-emerald-500/70 flex items-center gap-2">
+                    <CheckCircle2 size={12} /> Submission Pipeline
+                  </h4>
+                  <p className="text-[11px] text-zinc-500">Pronto para submissão oficial no Google VRP ou HackerOne.</p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <button 
+                    onClick={() => navigator.clipboard.writeText(result.relatorio_markdown || '')}
+                    className="px-4 py-2 bg-emerald-500 text-black text-[10px] font-bold rounded-lg hover:bg-emerald-400 transition-all uppercase tracking-widest shadow-lg shadow-emerald-500/20"
+                  >
+                    Copy Report
+                  </button>
+                  <a 
+                    href="https://bughunters.google.com/report"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-4 py-2 bg-white text-black text-[10px] font-bold rounded-lg hover:bg-zinc-200 transition-all uppercase tracking-widest flex items-center gap-2"
+                  >
+                    Submit <Globe size={12} />
+                  </a>
+                </div>
               </div>
 
               {/* Researcher Attribution & Certification */}
-              <div className="mt-4 pt-4 border-t border-zinc-900 bg-black/20 p-4 rounded-b-lg">
-                <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-                  <div className="space-y-1 text-center md:text-left">
-                    <h5 className="text-[9px] font-mono uppercase text-zinc-500 tracking-[0.2em]">Neural Pipeline Architecture</h5>
-                    <p className="text-[10px] text-zinc-400 font-mono italic">
-                      {result.telemetria?.modelo?.includes('pro') ? 'Deep Reasoning Engine (Pro)' : 'Fast Triage Pipeline (Flash)'} • Grounding v3.2
+              <div className="pt-6 border-t border-zinc-900">
+                <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+                  <div className="space-y-2 text-center md:text-left">
+                    <h5 className="text-[9px] font-mono uppercase text-zinc-600 tracking-[0.3em]">Auditor Neural Core</h5>
+                    <p className="text-[10px] text-zinc-500 font-mono italic">
+                      {(result.telemetria?.modelo || '').includes('pro') ? 'Deep Reasoning v3.1 (High Severity Recall)' : 'Neural Flash v3.0 (Low Latency Triage)'}
                     </p>
                   </div>
-                  <div className="space-y-1 text-center md:text-right">
-                    <h5 className="text-[9px] font-mono uppercase text-zinc-500 tracking-[0.2em]">Responsible Engineer</h5>
+                  <div className="space-y-2 text-center md:text-right">
+                    <h5 className="text-[9px] font-mono uppercase text-zinc-600 tracking-[0.3em]">Lead Security Engineer</h5>
                     <a 
                       href="https://g.dev/anacarolinelamas" 
                       target="_blank" 
                       rel="noreferrer"
-                      className="text-[10px] text-emerald-500 font-mono hover:underline inline-flex items-center gap-2 group"
+                      className="text-[11px] text-emerald-500 font-mono hover:text-emerald-400 inline-flex items-center gap-2 group transition-colors"
                     >
-                      Ana Caroline Lamas | Skills Cert <Badge variant="info" className="text-[8px] py-0 px-1 font-bold">GEN AI CERTIFIED</Badge>
-                      <Search size={10} className="opacity-0 group-hover:opacity-100 transition-opacity" />
+                      Ana Caroline Lamas <Badge variant="info" className="text-[8px] py-0 px-1.5 font-bold bg-blue-500/10 text-blue-400 border-blue-500/20">VRP EXPERT</Badge>
+                      <Search size={12} className="opacity-0 group-hover:opacity-100 transition-opacity" />
                     </a>
                   </div>
                 </div>
@@ -320,15 +379,23 @@ export const AnalysisDashboard = ({ analysis }: AnalysisDashboardProps) => {
             <h3 className="text-[11px] font-mono uppercase tracking-widest text-amber-500/70 mb-4 flex items-center gap-2">
               <Zap size={14} /> Hunting Strategy (Anti-Duplicate)
             </h3>
-            <div className="prose prose-invert prose-sm max-w-none text-zinc-400 font-mono text-[12px] leading-relaxed italic">
+            <div className="prose prose-invert prose-base max-w-none text-zinc-400 font-mono text-sm leading-relaxed italic">
               <ReactMarkdown>{result.estrategia_hunting}</ReactMarkdown>
             </div>
           </section>
 
           {/* Deep JSON Report Node */}
           <section className="bg-black/40 border border-zinc-800 rounded-lg p-6 overflow-hidden">
-            <h3 className="text-[11px] font-mono uppercase tracking-[0.3em] text-zinc-500 mb-4 flex items-center gap-2">
-              <FileCode size={14} /> JSON Metadata Node (Raw Analysis)
+            <h3 className="text-[11px] font-mono uppercase tracking-[0.3em] text-zinc-500 mb-4 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <FileCode size={14} /> JSON Metadata Node (Raw Analysis)
+              </div>
+              <button 
+                onClick={() => navigator.clipboard.writeText(JSON.stringify(result, null, 2))}
+                className="text-[9px] text-blue-500 hover:text-blue-400 transition-colors uppercase font-bold tracking-widest border border-blue-500/30 px-2 py-0.5 rounded bg-blue-500/5"
+              >
+                Copy JSON
+              </button>
             </h3>
             <div className="bg-zinc-950 p-4 rounded border border-zinc-900 overflow-x-auto max-h-96">
               <pre className="text-[10px] font-mono text-blue-400 leading-tight">
@@ -423,19 +490,24 @@ export const AnalysisDashboard = ({ analysis }: AnalysisDashboardProps) => {
               <Info size={14} /> Neural Pipeline Methodology
             </h3>
             <p className="text-[11px] text-zinc-500 leading-relaxed font-mono">
-              This analysis utilizes cross-grounding. First, the {result.telemetria?.pipeline || 'Analysis Engine'} identifies critical flows. Then, a secondary Auditor verifies every piece of evidence against the source code to mitigate technical hallucinations.
+              This analysis utilizes cross-grounding. First, the {result.telemetria.pipeline} identifies critical flows. Then, a secondary Auditor verifies every piece of evidence against the source code to mitigate technical hallucinations.
             </p>
           </section>
 
           <section className="bg-emerald-500/5 border border-emerald-500/10 rounded-lg p-5">
             <h4 className="text-[11px] font-mono uppercase tracking-widest text-emerald-500/70 mb-4 flex items-center gap-2">
-              <BookOpen size={14} /> Standard Submission Clauses
+              <BookOpen size={14} /> Cyber Hunter Lab - Ethics & Compliance
             </h4>
             <div className="space-y-3">
               <ClauseItem 
-                icon={<UserCheck size={12} />} 
-                title="Researcher Mindset" 
-                text="Student of Google Cloud Skills Boost (Gen AI) applying advanced security frameworks." 
+                icon={<Search size={12} />} 
+                title="Recon Module Ethics" 
+                text="Auditoria de superfície concluída. Este mapeamento foi realizado de forma passiva/não intrusiva, respeitando os limites do programa de Bug Bounty. Nenhuma alteração foi feita nos ativos do alvo." 
+              />
+              <ClauseItem 
+                icon={<Scale size={12} />} 
+                title="Trusted Researcher" 
+                text="As vulnerabilidades descritas foram tratadas sob sigilo e enviadas diretamente ao proprietário do sistema, seguindo as diretrizes de Trusted Researcher." 
               />
               <ClauseItem 
                 icon={<Shield size={12} />} 
@@ -443,14 +515,9 @@ export const AnalysisDashboard = ({ analysis }: AnalysisDashboardProps) => {
                 text="User input is never trusted. All external info is potentially malicious until sanitized." 
               />
               <ClauseItem 
-                icon={<Globe size={12} />} 
-                title="Human Validation" 
-                text="Assistive AI document. All findings must be manually validated before production." 
-              />
-              <ClauseItem 
-                icon={<Scale size={12} />} 
-                title="Ethics & Responsibility" 
-                text="Proactive improvement of security following professional rules of ethics and transparency." 
+                icon={<UserCheck size={12} />} 
+                title="Researcher Identity" 
+                text="Student of Google Cloud Skills Boost (Gen AI) applying advanced security frameworks." 
               />
               <div className="pt-2 border-t border-emerald-500/10 mt-2">
                 <a 

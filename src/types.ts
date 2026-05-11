@@ -4,7 +4,8 @@ export interface AnalysisResult {
   evidencia: string;
   linhas_afetadas: string[];
   impacto: 'baixo' | 'medio' | 'alto' | 'critico';
-  vrp_category: 'S0' | 'S1' | 'S2' | 'C0' | 'C1' | 'A1' | 'A2' | 'A3' | 'A4' | 'A5' | 'A6' | 'Outro';
+  severidade: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+  vrp_category: 'S0' | 'S1' | 'S2' | 'C0' | 'C1' | 'A1' | 'A2' | 'A3' | 'A4' | 'A5' | 'A6' | 'OSS_Supply_Chain' | 'OSS_Product' | 'Outro';
   triage_priority: 'P0' | 'P1' | 'P2' | 'P3' | 'P4';
   risco_duplicata: 'baixo' | 'medio' | 'alto';
   patch_corrige: boolean;
@@ -19,8 +20,6 @@ export interface AnalysisResult {
   sanitizacao: string;
   impacto_real: boolean;
   modelagem_ataque: string;
-  escalation_path?: string;
-  hvt_affected?: string[];
   oss_vrp_tier?: 'OT0' | 'OT1' | 'OT2' | 'OT3' | null;
   poc_reproducao?: string;
   poc_passos: string[];
@@ -42,33 +41,6 @@ export interface VerificationResult {
   final_confidence: number;
   final_status: 'confirmado' | 'inconclusivo';
   feedback: string;
-}
-
-export interface UserAccount {
-  id: string;
-  username: string;
-  token: string;
-  createdAt: string;
-  linkedIP?: string;
-  userApiKey?: string;
-}
-
-export type AccessLevel = 'unauthorized' | 'admin' | 'userland';
-
-export interface WhitelistedIP {
-  id: string;
-  ip: string;
-  name: string;
-  addedAt: string;
-}
-
-export interface AccessLog {
-  id: string;
-  timestamp: string;
-  ip: string;
-  action: string;
-  details: string;
-  level: AccessLevel;
 }
 
 export interface SecurityAnalysis {

@@ -11,58 +11,71 @@ import {
   AlertCircle,
   Loader2,
   FileCode,
+  Image as ImageIcon,
   Target,
   ArrowLeft,
+  Shield,
   Zap as Power,
+  Globe,
+  Settings,
+  LayoutDashboard,
+  Cpu,
   Terminal,
   LogOut,
-  Settings
+  Key,
+  Trash2
 } from 'lucide-react';
 import { CodeInput } from './components/CodeInput';
 import { AnalysisDashboard } from './components/AnalysisDashboard';
+import { VRPResourceHub } from './components/VRPResourceHub';
+import { AgenticPipeline } from './components/AgenticPipeline';
+import { LoginPage } from './components/LoginPage';
+import { LandingPage } from './components/LandingPage';
 import { analyzePatch } from './services/gemini';
-import { SecurityAnalysis, AccessLevel, WhitelistedIP, AccessLog, UserAccount } from './types';
+import { SecurityAnalysis } from './types';
 import { MethodologyCard } from './components/MethodologyCard';
 import { Badge } from './components/ui/Badge';
-import { AccessPoint } from './components/AccessPoint';
-import { AdminCommandCenter } from './components/AdminCommandCenter';
 import { cn } from './lib/utils';
+import { ApiKeyProvider, useApiKey } from './lib/apiKey';
+import { ApiKeySetup } from './components/ApiKeySetup';
 
-export default function App() {
-  // Auth State
-  const [accessLevel, setAccessLevel] = useState<AccessLevel>(() => {
-    return (localStorage.getItem('access_level') as AccessLevel) || 'unauthorized';
+function AppContent() {
+  const [hasStarted, setHasStarted] = useState<boolean>(() => {
+    return localStorage.getItem('lab_started') === 'true';
   });
-  const [currentUser, setCurrentUser] = useState(localStorage.getItem('current_user') || '');
-  const [viewMode, setViewMode] = useState<'scanner' | 'admin'>('scanner');
-  const [userAccounts, setUserAccounts] = useState<UserAccount[]>(() => {
-    const saved = localStorage.getItem('user_accounts');
-    return saved ? JSON.parse(saved) : [];
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
+    return localStorage.getItem('vrp_auth') === 'true';
   });
-
-  // App State
-  const [codeBefore, setCodeBefore] = useState('');
-  const [codeAfter, setCodeAfter] = useState('');
-  const [diff, setDiff] = useState('');
-  const [customRules, setCustomRules] = useState('');
+  const { apiKey, isConfigured } = useApiKey();
+  const [showApiKeySetup, setShowApiKeySetup] = useState(false);
+  const [view, setView] = useState<'validator' | 'resources' | 'pipeline'>(() => {
+    return (localStorage.getItem('validator_view') as any) || 'validator';
+  });
+  const [codeBefore, setCodeBefore] = useState(() => {
+    return localStorage.getItem('validator_code_before') || '';
+  });
+  const [codeAfter, setCodeAfter] = useState(() => {
+    return localStorage.getItem('validator_code_after') || '';
+  });
+  const [diff, setDiff] = useState(() => {
+    return localStorage.getItem('validator_diff') || '';
+  });
+  const [customRules, setCustomRules] = useState(() => {
+    return localStorage.getItem('validator_custom_rules') || '';
+  });
   const [showCustomRules, setShowCustomRules] = useState(false);
-  const [useThinking, setUseThinking] = useState(false);
-  const [targetPlatform, setTargetPlatform] = useState<'google_vrp' | 'hackerone'>('google_vrp');
+  const [useThinking, setUseThinking] = useState(() => {
+    return localStorage.getItem('validator_use_thinking') === 'true';
+  });
+  const [safeMode, setSafeMode] = useState(() => {
+    const saved = localStorage.getItem('validator_safe_mode');
+    return saved === null ? true : saved === 'true';
+  });
+  const [targetPlatform, setTargetPlatform] = useState<'google_vrp' | 'hackerone'>(() => {
+    return (localStorage.getItem('validator_platform') as any) || 'google_vrp';
+  });
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
-  // Management State
-  const [currentIp, setCurrentIp] = useState<string | null>(null);
-  const [isKillSwitchActive, setIsKillSwitchActive] = useState(() => localStorage.getItem('kill_switch') === 'true');
-  const [whitelistedIPs, setWhitelistedIPs] = useState<WhitelistedIP[]>(() => {
-    const saved = localStorage.getItem('whitelisted_ips');
-    return saved ? JSON.parse(saved) : [{ id: '1', ip: '127.0.0.1', name: 'Master Admin', addedAt: new Date().toISOString() }];
-  });
-  const [accessLogs, setAccessLogs] = useState<AccessLog[]>(() => {
-    const saved = localStorage.getItem('access_logs');
-    return saved ? JSON.parse(saved) : [];
-  });
-
   const [history, setHistory] = useState<SecurityAnalysis[]>(() => {
     const saved = localStorage.getItem('validator_history');
     return saved ? JSON.parse(saved) : [];
@@ -73,65 +86,94 @@ export default function App() {
     return saved ? JSON.parse(saved) : null;
   });
 
-  // Persistence side effects
-  useEffect(() => {
-    // Anti-Tampering & Ghost Logic
-    const handleContextMenu = (e: MouseEvent) => e.preventDefault();
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.ctrlKey && (e.key === 'u' || e.key === 's' || e.key === 'i' || e.key === 'j')) e.preventDefault();
-      if (e.key === 'F12') e.preventDefault();
-    };
-
-    window.addEventListener('contextmenu', handleContextMenu);
-    window.addEventListener('keydown', handleKeyDown);
-
-    // Get current IP for Ghost Entry check
-    fetch('https://api.ipify.org?format=json')
-      .then(res => res.json())
-      .then(data => setCurrentIp(data.ip))
-      .catch(() => setCurrentIp('internal_node'));
-
-    return () => {
-      window.removeEventListener('contextmenu', handleContextMenu);
-      window.removeEventListener('keydown', handleKeyDown);
-    };
-  }, []);
-
-  useEffect(() => {
-    localStorage.setItem('access_level', accessLevel);
-    localStorage.setItem('current_user', currentUser);
-    localStorage.setItem('kill_switch', isKillSwitchActive.toString());
-    localStorage.setItem('whitelisted_ips', JSON.stringify(whitelistedIPs));
-    localStorage.setItem('access_logs', JSON.stringify(accessLogs.slice(0, 100)));
-    localStorage.setItem('validator_history', JSON.stringify(history.slice(0, 20)));
-    localStorage.setItem('validator_current', JSON.stringify(currentAnalysis));
-    localStorage.setItem('user_accounts', JSON.stringify(userAccounts));
-  }, [accessLevel, currentUser, isKillSwitchActive, whitelistedIPs, accessLogs, history, currentAnalysis, userAccounts]);
-
-  const addLog = (action: string, details: string, level: AccessLevel) => {
-    const newLog: AccessLog = {
-      id: crypto.randomUUID(),
-      timestamp: new Date().toISOString(),
-      ip: 'Detected Node',
-      action,
-      details,
-      level
-    };
-    setAccessLogs(prev => [newLog, ...prev]);
+  const handleLogin = (success: boolean) => {
+    if (success) {
+      setIsAuthenticated(true);
+      localStorage.setItem('vrp_auth', 'true');
+    }
   };
 
-  const handleAccessGranted = (level: AccessLevel, user: string) => {
-    setAccessLevel(level);
-    setCurrentUser(user);
-    addLog('AUTHENTICATION_SUCCESS', `Session initiated for user ${user}`, level);
+  const handleStartLab = () => {
+    setHasStarted(true);
+    localStorage.setItem('lab_started', 'true');
+  };
+
+  const handleBackToLanding = () => {
+    setHasStarted(false);
+    localStorage.removeItem('lab_started');
   };
 
   const handleLogout = () => {
-    addLog('SESSION_TERMINATED', `User ${currentUser} logged out`, accessLevel);
-    setAccessLevel('unauthorized');
-    setCurrentUser('');
-    setViewMode('scanner');
+    setIsAuthenticated(false);
+    setHasStarted(false);
+    localStorage.removeItem('vrp_auth');
+    localStorage.removeItem('lab_started');
   };
+
+  const deleteHistoryItem = (id: string) => {
+    setHistory(prev => {
+      const updated = prev.filter(item => item.id !== id);
+      return updated;
+    });
+  };
+
+  const clearHistory = () => {
+    if (window.confirm("ATENÇÃO: Isso apagará permanentemente todo o histórico local de análises. Continuar?")) {
+      setHistory([]);
+      localStorage.removeItem('validator_history');
+      localStorage.removeItem('validator_current');
+      setCurrentAnalysis(null);
+    }
+  };
+
+  // Persistence side effects
+  useEffect(() => {
+    localStorage.setItem('validator_history', JSON.stringify(history.slice(0, 20))); // Keep last 20
+  }, [history]);
+
+  useEffect(() => {
+    localStorage.setItem('validator_current', JSON.stringify(currentAnalysis));
+  }, [currentAnalysis]);
+
+  useEffect(() => {
+    localStorage.setItem('validator_view', view);
+  }, [view]);
+
+  useEffect(() => {
+    localStorage.setItem('validator_code_before', codeBefore);
+  }, [codeBefore]);
+
+  useEffect(() => {
+    localStorage.setItem('validator_code_after', codeAfter);
+  }, [codeAfter]);
+
+  useEffect(() => {
+    localStorage.setItem('validator_diff', diff);
+  }, [diff]);
+
+  useEffect(() => {
+    localStorage.setItem('validator_custom_rules', customRules);
+  }, [customRules]);
+
+  useEffect(() => {
+    localStorage.setItem('validator_use_thinking', String(useThinking));
+  }, [useThinking]);
+
+  useEffect(() => {
+    localStorage.setItem('validator_safe_mode', String(safeMode));
+  }, [safeMode]);
+
+  useEffect(() => {
+    localStorage.setItem('validator_platform', targetPlatform);
+  }, [targetPlatform]);
+
+  if (!hasStarted) {
+    return <LandingPage onStart={handleStartLab} />;
+  }
+
+  if (!isAuthenticated) {
+    return <LoginPage onLogin={handleLogin} onBack={handleBackToLanding} />;
+  }
 
   const loadExample = () => {
     setCodeBefore(`// API de Gerenciamento de Arquivos - v1.0\napp.get('/download', (req, res) => {\n  const { filename } = req.query;\n  // Falha Crítica: Path Traversal direto sem sanitização\n  const filePath = path.join(__dirname, 'public', filename);\n  res.download(filePath);\n});`);
@@ -140,8 +182,8 @@ export default function App() {
   };
 
   const handleStartAnalysis = async () => {
-    if (isKillSwitchActive && accessLevel !== 'admin') {
-      setError('SYSTEM_LOCKED: Maintenance mode active.');
+    if (!apiKey) {
+      setShowApiKeySetup(true);
       return;
     }
 
@@ -155,10 +197,6 @@ export default function App() {
     setCurrentAnalysis(null);
 
     try {
-      // Use user-specific API key if available to preserve admin credits
-      const activeUser = userAccounts.find(u => u.username === currentUser);
-      const customApiKey = activeUser?.userApiKey;
-
       const { analysis, verification } = await analyzePatch(
         codeBefore, 
         codeAfter, 
@@ -167,7 +205,8 @@ export default function App() {
         customRules,
         history.map(h => h.result),
         targetPlatform,
-        customApiKey
+        apiKey,
+        safeMode
       );
       
       const session: SecurityAnalysis = {
@@ -182,7 +221,6 @@ export default function App() {
 
       setCurrentAnalysis(session);
       setHistory(prev => [session, ...prev]);
-      addLog('ANALYSIS_COMPLETE', `Scoped ${analysis.vulnerabilidade || 'Clean'}`, accessLevel);
     } catch (err: any) {
       console.error(err);
       setError(err.message || 'Erro durante a análise de IA.');
@@ -191,124 +229,136 @@ export default function App() {
     }
   };
 
-  if (accessLevel === 'unauthorized') {
-    // GHOST ENTRY: If IP is not in whitelist, show fake 404
-    const isWhitelisted = whitelistedIPs.some(ip => ip.ip === currentIp) || accessLogs.some(l => l.level === 'admin');
-    
-    // During development, if we don't have IPs yet, don't block the first admin
-    if (whitelistedIPs.length > 1 && !isWhitelisted && currentIp) {
-      return (
-        <div className="min-h-screen bg-black text-zinc-600 flex flex-col items-center justify-center p-10 font-mono">
-          <h1 className="text-4xl font-bold">404</h1>
-          <p className="mt-4 text-[10px] uppercase tracking-widest">Connection refused by remote host.</p>
-          <div className="w-10 h-px bg-zinc-900 my-6" />
-          <p className="text-[10px] text-zinc-800">The requested URI was not found on this server.</p>
-        </div>
-      );
-    }
-    return <AccessPoint onAccessGranted={handleAccessGranted} users={userAccounts} />;
-  }
-
   return (
     <div className="min-h-screen bg-[#0d0d0d] text-zinc-300 font-sans selection:bg-zinc-700 selection:text-white">
       {/* Top Navigation - Technical Header */}
-      <header className="border-bottom border-zinc-800 bg-[#121212] py-4 px-6 flex items-center justify-between sticky top-0 z-50">
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-zinc-800/50 rounded-lg border border-zinc-700/50">
-            <ShieldAlert size={20} className={cn(accessLevel === 'admin' ? "text-emerald-500" : "text-zinc-100")} />
+      <header className="border-b border-zinc-800 bg-[#121212] py-4 px-4 md:px-6 flex flex-col md:flex-row items-center justify-between sticky top-0 z-50 gap-4 md:gap-0">
+        <div className="flex items-center gap-3 w-full md:w-auto">
+          <div className="p-2 bg-zinc-800/50 rounded-lg border border-zinc-700/50 flex-shrink-0">
+            <ShieldAlert size={20} className="text-zinc-100" />
           </div>
-          <div className="cursor-pointer" onClick={() => setViewMode('scanner')}>
-            <h1 className="text-xs font-mono font-bold uppercase tracking-[0.2em] text-zinc-100">
-              Cyber Hunter Lab <span className="text-zinc-500 font-normal">v4.0</span>
+          <div className="min-w-0">
+            <h1 translate="no" className="text-xs font-mono font-bold uppercase tracking-[0.2em] text-zinc-100 truncate">
+              Cyber Hunter Lab <span className="text-zinc-500 font-normal">v5.0 Elite</span>
             </h1>
             <p className="text-[10px] font-mono text-zinc-500 uppercase flex items-center gap-2">
-              <span className={cn("w-2 h-2 rounded-full animate-pulse", isKillSwitchActive ? "bg-red-500" : "bg-emerald-500")} />
-              Operator: {currentUser} {accessLevel === 'admin' && <span className="text-emerald-500/80">[ADMIN]</span>}
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse flex-shrink-0" />
+              Status: Engenharia de Triagem (P1 Elite)
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-6">
-        <div className="flex items-center gap-4 text-[11px] font-mono text-zinc-500">
-             {accessLevel === 'admin' && (
-               viewMode === 'admin' ? (
-                 <button 
-                   onClick={() => setViewMode('scanner')}
-                   className="flex items-center gap-2 px-3 py-1.5 rounded border bg-emerald-500/10 border-emerald-500/50 text-emerald-500 transition-all font-mono text-[10px]"
-                   title="VOLTAR_TERMINAL"
-                 >
-                   <ArrowLeft size={14} /> <span className="hidden sm:inline">VOLTAR_TERMINAL</span>
-                 </button>
-               ) : (
-                 <button 
-                   onClick={() => setViewMode('admin')}
-                   className="flex items-center gap-2 px-3 py-1.5 rounded border border-zinc-800 hover:border-emerald-500/30 hover:text-emerald-400 transition-all font-mono text-[10px] bg-zinc-900/50"
-                   title="GESTÃO_E_USUÁRIOS"
-                 >
-                   <Settings size={14} /> <span className="hidden sm:inline">GESTÃO_E_USUÁRIOS</span>
-                 </button>
-               )
-             )}
-             <button 
-              onClick={handleLogout}
-              className="hidden md:flex items-center gap-1 font-mono hover:text-red-400 transition-colors"
-             >
-               <LogOut size={12} /> DISCONNECT
-             </button>
+        <div className="flex flex-col sm:flex-row items-center gap-3 md:gap-6 w-full md:w-auto">
+          <div className="flex items-center gap-4 text-[10px] font-mono text-zinc-500 bg-zinc-900/50 px-3 py-1 rounded-full border border-zinc-800">
+            <button 
+              onClick={() => setShowApiKeySetup(true)}
+              className={cn(
+                "flex items-center gap-1.5 transition-colors",
+                isConfigured ? "text-emerald-500" : "text-zinc-600 hover:text-zinc-400"
+              )}
+            >
+              <Key size={12} /> ENGINE: {isConfigured ? "FUELED" : "BYOK REQUIRED"}
+            </button>
+            <span className="flex items-center gap-1.5 text-zinc-400 border-l border-zinc-800 pl-4">
+              <Cpu size={12} /> {useThinking ? "PRO 3.1" : "FLASH 3.1"}
+            </span>
           </div>
-          
-          {viewMode === 'scanner' && (
+          <nav className="flex items-center bg-zinc-900 border border-zinc-800 rounded-lg p-1 w-full sm:w-auto justify-center sm:justify-start gap-1">
+            <button 
+              onClick={() => setView('validator')}
+              className={cn(
+                "flex-1 sm:flex-none flex items-center justify-center gap-2 px-3 py-1.5 rounded-md text-[10px] font-mono uppercase tracking-widest transition-all",
+                view === 'validator' ? "bg-zinc-800 text-white border border-zinc-700 shadow-xl" : "text-zinc-500 hover:text-zinc-400"
+              )}
+            >
+              <LayoutDashboard size={14} /> Validator
+            </button>
+            <button 
+              onClick={() => setView('pipeline')}
+              className={cn(
+                "flex-1 sm:flex-none flex items-center justify-center gap-2 px-3 py-1.5 rounded-md text-[10px] font-mono uppercase tracking-widest transition-all",
+                view === 'pipeline' ? "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 shadow-xl" : "text-zinc-500 hover:text-zinc-400"
+              )}
+            >
+              <Terminal size={14} /> Pipeline
+            </button>
+            <button 
+              onClick={() => setView('resources')}
+              className={cn(
+                "flex-1 sm:flex-none flex items-center justify-center gap-2 px-3 py-1.5 rounded-md text-[10px] font-mono uppercase tracking-widest transition-all",
+                view === 'resources' ? "bg-zinc-800 text-white border border-zinc-700 shadow-xl" : "text-zinc-500 hover:text-zinc-400"
+              )}
+            >
+              <Globe size={14} /> Resources
+            </button>
+          </nav>
+
+          <div className="flex items-center gap-2 w-full sm:w-auto">
             <button 
               onClick={() => setUseThinking(!useThinking)}
               className={cn(
-                "p-2 rounded border transition-all flex items-center gap-2 text-[10px] font-mono uppercase tracking-widest",
+                "flex-1 sm:flex-none p-2 rounded border transition-all flex items-center justify-center gap-2 text-[10px] font-mono uppercase tracking-widest",
                 useThinking ? "bg-amber-500/10 border-amber-500/50 text-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.2)]" : "bg-zinc-800 border-zinc-700 text-zinc-500 hover:text-zinc-400"
               )}
             >
-              <Activity size={14} className={useThinking ? "animate-pulse" : ""} />
-              {useThinking ? "Deep Scan" : "Fast Scan"}
+              <Power size={14} />
+              <span className="truncate">
+                {useThinking ? "Thinking" : "Fast"}
+              </span>
             </button>
-          )}
+
+            <div className="flex items-center gap-1 bg-zinc-800 rounded p-0.5 border border-zinc-700">
+              <button 
+                onClick={() => setTargetPlatform('google_vrp')}
+                className={cn(
+                  "px-2 py-0.5 rounded text-[9px] font-mono uppercase transition-all",
+                  targetPlatform === 'google_vrp' ? "bg-white text-black" : "text-zinc-500 hover:text-zinc-400"
+                )}
+              >
+                VRP
+              </button>
+              <button 
+                onClick={() => setTargetPlatform('hackerone')}
+                className={cn(
+                  "px-2 py-0.5 rounded text-[9px] font-mono uppercase transition-all",
+                  targetPlatform === 'hackerone' ? "bg-blue-600 text-white" : "text-zinc-500 hover:text-zinc-400"
+                )}
+              >
+                H1
+              </button>
+            </div>
+
+            <button 
+              onClick={() => setSafeMode(!safeMode)}
+              className={cn(
+                "flex-1 sm:flex-none p-2 rounded border transition-all flex items-center justify-center gap-2 text-[10px] font-mono uppercase tracking-widest",
+                safeMode ? "bg-emerald-500/10 border-emerald-500/50 text-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.2)]" : "bg-red-500/10 border-red-500/50 text-red-500 shadow-[0_0_15px_rgba(239,68,68,0.2)]"
+              )}
+              title={safeMode ? "Modo Seguro Ativo (Ético)" : "Modo Ofensivo Ativo (Cautela)"}
+            >
+              <Shield size={14} />
+              <span className="truncate">
+                {safeMode ? "Safe" : "Offensive"}
+              </span>
+            </button>
+            
+            <button 
+              onClick={handleLogout}
+              className="p-2 bg-red-500/10 border border-red-500/20 text-red-500 rounded hover:bg-red-500/20 transition-all flex-shrink-0"
+              title="Logout"
+            >
+              <LogOut size={14} />
+            </button>
+          </div>
         </div>
       </header>
 
       <main className="max-w-7xl mx-auto p-6 md:p-8 space-y-12">
         <AnimatePresence mode="wait">
-          {viewMode === 'admin' && accessLevel === 'admin' ? (
-            <motion.div
-              key="admin-center"
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 20 }}
-            >
-              <AdminCommandCenter 
-                ips={whitelistedIPs}
-                logs={accessLogs}
-                isKillSwitchActive={isKillSwitchActive}
-                users={userAccounts}
-                onAddUser={(username, token) => {
-                  const newUser: UserAccount = { id: crypto.randomUUID(), username, token, createdAt: new Date().toISOString() };
-                  setUserAccounts(prev => [newUser, ...prev]);
-                  addLog('USER_PROVISIONED', `Account for ${username} created`, 'admin');
-                }}
-                onRemoveUser={(id) => {
-                  setUserAccounts(prev => prev.filter(u => u.id !== id));
-                  addLog('USER_DECOMMISSIONED', `Account ID ${id} removed`, 'admin');
-                }}
-                onToggleKillSwitch={() => {
-                  setIsKillSwitchActive(!isKillSwitchActive);
-                  addLog('KILL_SWITCH_TOGGLE', `Status set to ${!isKillSwitchActive}`, 'admin');
-                }}
-                onAddIP={(ip, name) => {
-                  setWhitelistedIPs([{ id: crypto.randomUUID(), ip, name, addedAt: new Date().toISOString() }, ...whitelistedIPs]);
-                  addLog('IP_AUTHORIZED', `Operator ${name} (${ip}) authorized`, 'admin');
-                }}
-                onRemoveIP={(id) => {
-                  setWhitelistedIPs(whitelistedIPs.filter(ip => ip.id !== id));
-                  addLog('IP_REVOKED', `Authorization for ID ${id} removed`, 'admin');
-                }}
-              />
-            </motion.div>
+          {view === 'resources' ? (
+            <VRPResourceHub key="resources" />
+          ) : view === 'pipeline' ? (
+            <AgenticPipeline key="pipeline" />
           ) : !currentAnalysis ? (
             <motion.div 
               key="input-form"
@@ -320,135 +370,117 @@ export default function App() {
               {/* Introduction Card */}
               <div className="bg-[#121212] border border-zinc-800 rounded-xl p-8 flex flex-col md:flex-row items-center gap-8 justify-between shadow-2xl">
                 <div className="max-w-2xl space-y-4 text-center md:text-left">
-                  <Badge variant="info">Análise Baseada nas Regras do Google VRP (2025)</Badge>
+                  <Badge variant="info">Arquitetura de Segurança Propriatária v5.0 Elite</Badge>
                   <h2 className="text-3xl font-bold text-white tracking-tight leading-none">
-                    Cace bugs <span className="text-zinc-500 underline decoration-zinc-800 underline-offset-8">não-triviais</span> com IA.
+                    <span translate="no">Cyber Hunter Lab</span>: Engenharia <span className="text-emerald-500 underline decoration-emerald-800 underline-offset-8">de Auditoria Avançada</span>.
                   </h2>
                   <p className="text-zinc-400 text-sm leading-relaxed max-w-xl">
-                    Treinado com as diretrizes do <strong>Google Bug Hunters</strong>, este motor prioriza falhas de alta recompensa e analisa o risco de duplicata para focar sua pesquisa onde o valor é maior.
+                    Pipeline integrado com <strong>Infraestrutura Proprietária</strong> para triagem massiva, análise de fluxo de dados (IDOR/BAC) e geração automatizada de bypasses para WAF.
                   </p>
-                  <div className="flex flex-wrap gap-3 pt-2">
-                    <button 
-                      onClick={loadExample}
-                      className="px-4 py-2 bg-blue-500/10 border border-blue-500/30 text-blue-400 rounded-lg text-[10px] font-mono uppercase tracking-widest hover:bg-blue-500/20 transition-all flex items-center gap-2"
-                    >
-                      <Target size={14} /> Carregar Exemplo VRP
-                    </button>
-                    <div className="flex flex-wrap gap-2">
-                      {['RCE', 'Access Layer', 'Lateral Move', 'GCP IAM', 'Critical Path'].map(rule => (
-                        <span key={rule} className="text-[9px] font-mono text-zinc-600 bg-zinc-900 px-2 py-0.5 rounded border border-zinc-800/50 flex items-center">
-                          {rule}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
+              <div className="flex flex-wrap gap-3 pt-2">
+                <button 
+                  onClick={loadExample}
+                  className="px-4 py-2 bg-blue-500/10 border border-blue-500/30 text-blue-400 rounded-lg text-[10px] font-mono uppercase tracking-widest hover:bg-blue-500/20 transition-all flex items-center gap-2"
+                >
+                  <Target size={14} /> Carregar Exemplo VRP
+                </button>
+                <div className="flex flex-wrap gap-2">
+                  {['RCE', 'XSLeak', 'IDOR', 'AI Safety', 'Supply Chain'].map(rule => (
+                    <span key={rule} className="text-[9px] font-mono text-zinc-600 bg-zinc-900 px-2 py-0.5 rounded border border-zinc-800/50 flex items-center">
+                      {rule}
+                    </span>
+                  ))}
+                </div>
+              </div>
                 </div>
                 <div className="grid grid-cols-2 gap-3 w-full md:w-auto">
-                   <FeatureIcon icon={<ShieldAlert size={24} />} title="IP Anchored" />
-                   <FeatureIcon icon={<Activity size={24} />} title="Deep Analysis" />
-                   <FeatureIcon icon={<Lock size={24} />} title="Stealth Mode" />
-                   <FeatureIcon icon={<Zap size={24} />} title="Custom Keys" />
+                   <FeatureIcon icon={<Bug size={24} />} title="Sanity Checks" />
+                   <FeatureIcon icon={<Activity size={24} />} title="Diff Analysis" />
+                   <FeatureIcon icon={<History size={24} />} title="Regression" />
+                   <FeatureIcon icon={<Zap size={24} />} title="Fast Audit" />
                 </div>
               </div>
 
               {/* Input Section */}
-              {isKillSwitchActive && accessLevel !== 'admin' ? (
-                <div className="p-12 border border-zinc-800 rounded-2xl bg-zinc-900/10 flex flex-col items-center text-center space-y-4">
-                  <Lock className="text-red-500" size={48} />
-                  <div className="space-y-1">
-                    <h3 className="text-lg font-mono font-bold uppercase tracking-widest text-white">System Locked</h3>
-                    <p className="text-xs font-mono text-zinc-500">Master Kill Switch is active. Contact your administrator for access reinstatement.</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
+                <CodeInput 
+                  label="Código 'Vulnerável'" 
+                  value={codeBefore} 
+                  onChange={setCodeBefore} 
+                  placeholder="Cole o arquivo antes do patch..."
+                />
+                <CodeInput 
+                  label="Código 'Patch'" 
+                  value={codeAfter} 
+                  onChange={setCodeAfter} 
+                  placeholder="Cole o arquivo após o patch..."
+                  icon={<ShieldAlert size={14} />}
+                />
+              </div>
+
+              {/* Custom Rules Input (Collapsible) */}
+              <div className="border border-zinc-800 rounded-xl overflow-hidden">
+                <button 
+                  onClick={() => setShowCustomRules(!showCustomRules)}
+                  className="w-full flex items-center justify-between p-4 bg-zinc-900/30 hover:bg-zinc-900/50 transition-colors"
+                >
+                  <h3 className="text-xs font-mono uppercase tracking-widest text-zinc-500 flex items-center gap-2">
+                    <ShieldAlert size={14} /> Regras Customizadas (Contexto do App)
+                  </h3>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] text-zinc-600 font-mono italic">
+                      {customRules ? "Padrões Ativos" : "Opcional"}
+                    </span>
+                    <Search size={14} className={cn("text-zinc-600 transition-transform", showCustomRules && "rotate-180")} />
+                  </div>
+                </button>
+                
+                {showCustomRules && (
+                  <div className="p-6 bg-[#121212] border-t border-zinc-800 animate-in slide-in-from-top-2">
+                    <textarea 
+                      value={customRules}
+                      onChange={(e) => setCustomRules(e.target.value)}
+                      placeholder="Ex: 'Neste codebase, não usamos queries SQL puras, apenas o ORM X. Qualquer uso de strings em queries é falha crítica.' ou 'Este serviço lida com dados PII bancários, regras de DP são prioridade.'"
+                      className="w-full h-24 bg-zinc-900 border border-zinc-800 rounded p-3 text-xs font-mono text-zinc-300 focus:outline-none focus:border-zinc-700 transition-colors resize-none"
+                    />
+                  </div>
+                )}
+              </div>
+
+              <div className="pt-4 border-t border-zinc-900 flex flex-col md:flex-row items-center justify-between gap-6">
+                <div className="flex items-center gap-4 text-xs font-mono text-zinc-500">
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" /> Lógica Determinística (High Precision)
+                  </div>
+                  <div className="w-px h-4 bg-zinc-800" />
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-blue-500" /> Grounding VRP 2025
                   </div>
                 </div>
-              ) : (
-                <>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
-                    <CodeInput 
-                      label="Código 'Vulnerável'" 
-                      value={codeBefore} 
-                      onChange={setCodeBefore} 
-                      placeholder="Cole o arquivo antes do patch..."
-                    />
-                    <CodeInput 
-                      label="Código 'Patch'" 
-                      value={codeAfter} 
-                      onChange={setCodeAfter} 
-                      placeholder="Cole o arquivo após o patch..."
-                      icon={<ShieldAlert size={14} />}
-                    />
-                  </div>
 
-                  <div className="border border-zinc-800 rounded-xl overflow-hidden">
-                    <button 
-                      onClick={() => setShowCustomRules(!showCustomRules)}
-                      className="w-full flex items-center justify-between p-4 bg-zinc-900/30 hover:bg-zinc-900/50 transition-colors"
-                    >
-                      <h3 className="text-xs font-mono uppercase tracking-widest text-zinc-500 flex items-center gap-2">
-                        <ShieldAlert size={14} /> Regras Customizadas (Contexto do App)
-                      </h3>
-                      <div className="flex items-center gap-2">
-                        <span className="text-[10px] text-zinc-600 font-mono italic">
-                          {customRules ? "Padrões Ativos" : "Opcional"}
-                        </span>
-                        <Search size={14} className={cn("text-zinc-600 transition-transform", showCustomRules && "rotate-180")} />
-                      </div>
-                    </button>
-                    
-                    {showCustomRules && (
-                      <div className="p-6 bg-[#121212] border-t border-zinc-800 animate-in slide-in-from-top-2">
-                        <textarea 
-                          value={customRules}
-                          onChange={(e) => setCustomRules(e.target.value)}
-                          placeholder="Ex: 'Neste codebase, não usamos queries SQL puras, apenas o ORM X. Qualquer uso de strings em queries é falha crítica.' ou 'Este serviço lida com dados PII bancários, regras de DP são prioridade.'"
-                          className="w-full h-24 bg-zinc-900 border border-zinc-800 rounded p-3 text-xs font-mono text-zinc-300 focus:outline-none focus:border-zinc-700 transition-colors resize-none"
-                        />
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="pt-4 border-t border-zinc-900 flex flex-col md:flex-row items-center justify-between gap-6">
-                    <div className="flex items-center gap-4 text-xs font-mono text-zinc-500">
-                      <div className="flex items-center gap-1.5">
-                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" /> IA Determinística (Temp 0.0)
-                      </div>
-                      <div className="w-px h-4 bg-zinc-800" />
-                      <div className="flex items-center gap-1.5">
-                        <span className="w-2 h-2 rounded-full bg-blue-500" /> Grounding VRP 2025
-                      </div>
+                <div className="flex items-center gap-4">
+                   <button 
+                    disabled={isAnalyzing}
+                    onClick={handleStartAnalysis}
+                    className="group relative px-8 py-3 bg-white text-black font-bold uppercase text-xs tracking-[0.2em] rounded-md hover:bg-zinc-200 transition-all flex items-center gap-2 disabled:opacity-50"
+                  >
+                    {isAnalyzing ? <Loader2 className="animate-spin" size={16} /> : <Power size={16} />}
+                    {isAnalyzing ? "Analisando Contexto..." : (!isConfigured ? "Ativar e Validar" : "Iniciar Validação")}
+                  </button>
+                  {error && (
+                    <div className="flex items-center gap-2 text-red-500 text-xs font-mono animate-pulse">
+                      <AlertCircle size={14} /> {error}
                     </div>
+                  )}
+                </div>
 
-                    <div className="flex items-center gap-4">
-                       {accessLevel === 'userland' && (
-                         <div className="flex flex-col gap-1">
-                            <label className="text-[9px] font-mono text-zinc-600 uppercase">Personal Gemini API Key (Optional)</label>
-                            <input 
-                              type="password"
-                              placeholder="Key to save balance..."
-                              value={userAccounts.find(u => u.username === currentUser)?.userApiKey || ''}
-                              onChange={(e) => {
-                                setUserAccounts(prev => prev.map(u => u.username === currentUser ? { ...u, userApiKey: e.target.value } : u));
-                              }}
-                              className="bg-black border border-zinc-800 rounded px-3 py-1.5 text-[10px] font-mono text-emerald-500 w-48 focus:border-zinc-700 outline-none"
-                            />
-                         </div>
-                       )}
-                       <button 
-                        disabled={isAnalyzing}
-                        onClick={handleStartAnalysis}
-                        className="group relative px-8 py-3 bg-white text-black font-bold uppercase text-xs tracking-[0.2em] rounded-md hover:bg-zinc-200 transition-all flex items-center gap-2 disabled:opacity-50"
-                      >
-                        {isAnalyzing ? <Loader2 className="animate-spin" size={16} /> : <Power size={16} />}
-                        {isAnalyzing ? "Analisando Contexto..." : "Iniciar Validação"}
-                      </button>
-                      {error && (
-                        <div className="flex items-center gap-2 text-red-500 text-xs font-mono animate-pulse">
-                          <AlertCircle size={14} /> {error}
-                        </div>
-                      )}
-                    </div>
+                <div className="flex items-center gap-6">
+                  <div className="text-right">
+                    <p className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest">Logic Pipeline</p>
+                    <p className="text-[11px] font-mono text-zinc-400">Cyber Hunter Kernel v5</p>
                   </div>
-                </>
-              )}
+                </div>
+              </div>
 
               <MethodologyCard />
             </motion.div>
@@ -470,40 +502,60 @@ export default function App() {
           )}
         </AnimatePresence>
 
-        {/* History Section */}
-        {history.length > 0 && !currentAnalysis && viewMode === 'scanner' && (
+        {/* History Sidebar/Section */}
+        {history.length > 0 && !currentAnalysis && (
           <motion.section 
             initial={{ opacity: 0 }}
             whileInView={{ opacity: 1 }}
             className="pt-12 border-t border-zinc-900"
           >
-            <h3 className="text-xs font-mono font-bold uppercase tracking-[0.3em] text-zinc-500 mb-6 flex items-center gap-2">
-              <History size={16} /> Registros de Análise Recentes
-            </h3>
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xs font-mono font-bold uppercase tracking-[0.3em] text-zinc-500 flex items-center gap-2">
+                <History size={16} /> Registros de Análise Recentes
+              </h3>
+              <button 
+                onClick={clearHistory}
+                className="text-[10px] font-mono text-red-500/70 hover:text-red-500 border border-red-500/20 px-3 py-1 rounded hover:bg-red-500/5 transition-all flex items-center gap-1.5 uppercase"
+              >
+                <Trash2 size={12} /> Limpar Tudo
+              </button>
+            </div>
+            
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {history.map((item) => (
-                <button 
-                  key={item.id}
-                  onClick={() => setCurrentAnalysis(item)}
-                  className="bg-[#121212] border border-zinc-800 p-4 rounded-lg hover:border-zinc-600 transition-all text-left flex items-center gap-4 overflow-hidden group"
-                >
-                  <div className="p-2 bg-zinc-800/50 rounded-lg group-hover:bg-zinc-700/50 transition-colors">
-                    <FileCode size={20} className={cn(
-                      item.result.vulnerabilidade ? "text-red-500" : "text-emerald-500"
-                    )} />
-                  </div>
-                  <div className="flex-1 overflow-hidden">
-                    <h4 className="text-[11px] font-mono font-bold text-white uppercase truncate">
-                      {item.result.vulnerabilidade || "Nenhuma falha"}
-                    </h4>
-                    <div className="flex items-center justify-between mt-1">
-                      <span className="text-[10px] font-mono text-zinc-500 truncate">{new Date(item.timestamp).toLocaleTimeString()}</span>
-                      <Badge variant={item.result.impacto === 'baixo' ? 'info' : (item.result.impacto === 'medio' ? 'warning' : 'danger')}>
-                        {item.result.impacto}
-                      </Badge>
+                <div key={item.id} className="relative group/item">
+                  <button 
+                    key={item.id}
+                    onClick={() => setCurrentAnalysis(item)}
+                    className="w-full bg-[#121212] border border-zinc-800 p-4 rounded-lg hover:border-zinc-600 transition-all text-left flex items-center gap-4 overflow-hidden group"
+                  >
+                    <div className="p-2 bg-zinc-800/50 rounded-lg group-hover:bg-zinc-700/50 transition-colors">
+                      <FileCode size={20} className={cn(
+                        item.result.vulnerabilidade ? "text-red-500" : "text-emerald-500"
+                      )} />
                     </div>
-                  </div>
-                </button>
+                    <div className="flex-1 overflow-hidden">
+                      <h4 className="text-[11px] font-mono font-bold text-white uppercase truncate">
+                        {item.result.vulnerabilidade || "Nenhuma falha"}
+                      </h4>
+                      <div className="flex items-center justify-between mt-1">
+                        <span className="text-[10px] font-mono text-zinc-500 truncate">{new Date(item.timestamp).toLocaleTimeString()}</span>
+                        <Badge variant={item.result.impacto === 'baixo' ? 'info' : (item.result.impacto === 'medio' ? 'warning' : 'danger')}>
+                          {item.result.impacto}
+                        </Badge>
+                      </div>
+                    </div>
+                  </button>
+                  <button 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      deleteHistoryItem(item.id);
+                    }}
+                    className="absolute top-2 right-2 p-1.5 bg-red-500/10 text-red-500 rounded opacity-0 group-hover/item:opacity-100 transition-all hover:bg-red-500 hover:text-white border border-red-500/20"
+                  >
+                    <Trash2 size={12} />
+                  </button>
+                </div>
               ))}
             </div>
           </motion.section>
@@ -514,13 +566,23 @@ export default function App() {
       <footer className="mt-24 border-t border-zinc-900 py-12 px-6 text-center">
         <div className="flex flex-col items-center gap-4">
           <ShieldAlert className="text-zinc-700" size={32} />
+          <h3 translate="no" className="text-xs font-mono font-bold text-zinc-500 uppercase tracking-widest">Cyber Hunter Lab</h3>
           <p className="text-[10px] font-mono text-zinc-600 max-w-lg leading-relaxed uppercase tracking-widest">
-            Este software é uma ferramenta assistiva baseada em modelos probabilitísticos de linguagem. 
-            Todas as descobertas devem ser validadas por um analista humano antes da aplicação em produção.
+            Laboratório de Caçadores Cibernéticos • Assistente Técnico de Auditoria
           </p>
         </div>
       </footer>
+
+      <ApiKeySetup isOpen={showApiKeySetup} onClose={() => setShowApiKeySetup(false)} />
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <ApiKeyProvider>
+      <AppContent />
+    </ApiKeyProvider>
   );
 }
 
@@ -529,4 +591,20 @@ const FeatureIcon = ({ icon, title }: { icon: React.ReactNode, title: string }) 
     <div className="text-zinc-500 group-hover:text-zinc-300 transition-colors">{icon}</div>
     <span className="text-[10px] font-mono text-zinc-600 uppercase tracking-widest">{title}</span>
   </div>
+);
+
+const ArrowBack = ({ size, className }: { size?: number, className?: string }) => (
+  <svg 
+    width={size || 16} 
+    height={size || 16} 
+    viewBox="0 0 24 24" 
+    fill="none" 
+    stroke="currentColor" 
+    strokeWidth="2" 
+    strokeLinecap="round" 
+    strokeLinejoin="round" 
+    className={className}
+  >
+    <path d="M19 12H5M12 19l-7-7 7-7" />
+  </svg>
 );
